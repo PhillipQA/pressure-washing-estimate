@@ -193,3 +193,4 @@ input[aria-invalid="true"]:focus, textarea[aria-invalid="true"]:focus { box-shad
 .success .btn { margin-top: 22px; }
 
 .site-footer { padding: 24px 0 32px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }
+.req { color: var(--error); font-weight: 700; }
