@@ -4,8 +4,8 @@ A one-page tool a pressure washing company can use to give a customer a price on
 
 The customer enters the size of each area to clean and the price updates as they type. They add their contact details and submit. The page then emails the customer's details and the full quote to **careers@finchharbor.com**.
 
-- **Live page:** LIVE_URL
-- **Repository:** REPO_URL
+- **Live page:** https://phillipqa.github.io/pressure-washing-estimate/
+- **Repository:** https://github.com/PhillipQA/pressure-washing-estimate
 
 ## Pricing
 
