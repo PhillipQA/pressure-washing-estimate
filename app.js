@@ -184,15 +184,53 @@
     if (!form.querySelector('[aria-invalid="true"]') && !servicesError.textContent) setStatus("", "");
   });
 
+  /* ---------- Phone country: dropdown with automatic detection ---------- */
+
+  const countrySelect = $("phone-country");
+  const phoneInput = $("phone");
+  let timeZone = "";
+  try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) { /* ignore */ }
+  const detectedCountry = L.detectCountry({
+    timeZone: timeZone,
+    languages: navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]
+  });
+  L.COUNTRIES.forEach((c) => {
+    const option = document.createElement("option");
+    option.value = c.iso;
+    option.textContent = c.dial ? "+" + c.dial + " " + c.name : c.name;
+    if (c.iso === detectedCountry) {
+      option.selected = true;
+      option.defaultSelected = true; // "Start a new quote" resets to the detected country
+    }
+    countrySelect.appendChild(option);
+  });
+
+  function validate(name) {
+    return L.validateField(name, $(name).value, { country: countrySelect.value });
+  }
+
+  // A number typed with "+code" picks its country in the dropdown.
+  phoneInput.addEventListener("input", () => {
+    if (phoneInput.value.trim().charAt(0) !== "+") return;
+    const parsed = L.parsePhone(phoneInput.value, countrySelect.value);
+    if (parsed.country && parsed.country.iso !== "ZZ" && parsed.country.iso !== countrySelect.value) {
+      countrySelect.value = parsed.country.iso;
+    }
+  });
+
+  countrySelect.addEventListener("change", () => {
+    if (phoneInput.value.trim() !== "") setFieldError(phoneInput, validate("phone"));
+  });
+
   DETAIL_FIELDS.forEach((name) => {
     const input = $(name);
     // Validate when leaving a field the customer has typed in (not while just tabbing through).
     input.addEventListener("blur", () => {
-      if (input.value.trim() !== "") setFieldError(input, L.validateField(name, input.value));
+      if (input.value.trim() !== "") setFieldError(input, validate(name));
     });
     // Once a field shows an error, clear it as soon as it's fixed.
     input.addEventListener("input", () => {
-      if (input.getAttribute("aria-invalid") === "true") setFieldError(input, L.validateField(name, input.value));
+      if (input.getAttribute("aria-invalid") === "true") setFieldError(input, validate(name));
     });
   });
 
@@ -217,11 +255,13 @@
     const details = {};
     DETAIL_FIELDS.forEach((name) => {
       const input = $(name);
-      const message = L.validateField(name, input.value);
+      const message = validate(name);
       setFieldError(input, message);
       details[name] = input.value.trim();
       if (message && !firstInvalid) firstInvalid = input;
     });
+    const phone = L.parsePhone(phoneInput.value, countrySelect.value);
+    if (phone.ok) details.phone = phone.display; // international format, e.g. +63 9171234567
 
     if (firstInvalid) {
       setStatus("Please fix the highlighted fields.", "error");

@@ -42,6 +42,14 @@ The brief said questions would not be answered, so these decisions are recorded 
 5. The page asks for the details a company needs to follow up on a quote:
    - Required: name, phone, email and property address.
    - Optional: notes.
+   - **Email** must be a properly formed address: one @, no leading, trailing or double dots, a real-looking domain and a top-level domain of 2+ letters. `name+tag@sub.example.co.uk` passes; `maria@example`, `maria..x@example.com` and `maria@example.c` don't.
+   - **Phone** has a country-code dropdown.
+     - The country is preselected from the visitor's time zone, then their browser language, falling back to the US.
+     - Typing a number that starts with `+code` switches the dropdown to that country.
+     - The number is checked against that country's length. US and Canadian numbers also follow the North American area-code rules.
+     - A leading trunk 0 is accepted (`0917 123 4567` for the Philippines).
+     - The email gets the number in international format (`+63 9171234567`).
+     - Countries not in the list can use "Other" with `+code`.
 6. The email goes to the company (careers@finchharbor.com) only. The customer sees the confirmation and quote number on screen. Reply-To is set to the customer's email so the company can answer directly.
 
 ## How it works
@@ -105,13 +113,13 @@ python3 -m http.server 8000
 node --test
 ```
 
-12 unit tests cover:
+17 unit tests cover:
 - Every rate.
 - The $150 boundary: $149.85 → $150.00, $150.00 stays $150.00, $150.15 stays $150.15.
 - Combined jobs, the largest allowed job ($157,000.00) and decimal rounding.
 - The mailto fallback.
 - Size parsing: rejects `abc`, `-5`, `1e3`, `1,5`, `12.345` and `100001`.
-- Detail validation.
+- Detail validation, including valid vs malformed emails, per-country phone rules, `+code` detection and country auto-detection.
 - HTML escaping in the email.
 
 A headless-browser smoke test was also run at 390px and 1280px wide, with the email service stubbed. It checked:
@@ -139,15 +147,16 @@ npx playwright show-report
 - Any request to the real EmailJS API is aborted and fails the test.
 - The stub can also simulate an email service error and a network failure.
 
-There are 43 tests, each run on desktop Chrome and a Pixel 7 phone (86 runs). They live in `tests-e2e/quote.spec.js` and use a page object in `tests-e2e/quote-page.js`:
+There are 65 tests, each run on desktop Chrome and a Pixel 7 phone (130 runs). They live in `tests-e2e/quote.spec.js` and use a page object in `tests-e2e/quote-page.js`:
 
 | Area | What's covered |
 |---|---|
 | Live price | The four rates; each service alone; the $150 minimum at $149.85 / $150.00 / $150.15; minimum on the job total; all four combined ($532.00); changing and clearing sizes; `1,500` and decimals |
 | Bad sizes | `-5`, `abc`, `1e3`, `12.345`, `1,5` and `100001` are each rejected and left out of the price; Enter in a size box doesn't submit |
-| Validation | Empty submit blocked; name, phone, email and address required but notes optional; red asterisks; spaces-only input; bad emails and phones; international phone and plus-addressed email accepted; error banner clears once fixed |
+| Validation | Empty submit blocked; name, phone, email and address required but notes optional; red asterisks; spaces-only input; 10 malformed emails rejected and 3 valid ones accepted; bad phones per country; `+63` switches the dropdown; a UK number with trunk 0 is accepted; changing the country re-checks the number; country codes listed; error banner clears once fixed |
 | Submitting | Exact email content (recipient, reply-to, every customer field, line items, totals, quote ID matches the screen); minimum shown in the email; one email from repeated clicks; HTML escaped; Start a new quote resets; spam trap sends nothing |
 | Failures | Service error and network failure: the right message, details kept, mailto fallback to careers@finchharbor.com, retry allowed |
+| Country detection | Manila → PH, London → GB, New York → US, Sydney → AU, UTC with en-CA → CA; "Start a new quote" returns to the detected country |
 | Layout | No horizontal scroll with the largest values and a 100-character name; price panel after the sizes on a phone and beside the form on desktop |
 
 The tests also run on every push through GitHub Actions (`.github/workflows/tests.yml`).

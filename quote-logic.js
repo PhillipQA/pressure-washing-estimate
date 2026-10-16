@@ -105,10 +105,165 @@
     };
   }
 
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  /* ---------- Email ---------- */
 
-  /** Returns an error message for a customer detail field, or "" when valid. */
-  function validateField(field, raw) {
+  const LOCAL_PART_RE = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
+  const DOMAIN_LABEL_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
+
+  /**
+   * Practical email check (RFC 5321/5322 "dot-atom" form):
+   * one @; local part up to 64 chars with no leading, trailing or double dots;
+   * a domain of at least two labels (letters, digits, inner hyphens); a top-level domain of 2+ letters.
+   */
+  function isValidEmail(value) {
+    const v = String(value == null ? "" : value).trim();
+    if (!v || v.length > 254) return false;
+    const at = v.indexOf("@");
+    if (at < 1 || at !== v.lastIndexOf("@")) return false;
+    const local = v.slice(0, at);
+    const domain = v.slice(at + 1);
+    if (local.length > 64 || !LOCAL_PART_RE.test(local)) return false;
+    const labels = domain.split(".");
+    if (labels.length < 2 || !labels.every(function (l) { return DOMAIN_LABEL_RE.test(l); })) return false;
+    const tld = labels[labels.length - 1];
+    return /^[A-Za-z]{2,63}$/.test(tld) || /^xn--[A-Za-z0-9-]{1,59}$/.test(tld);
+  }
+
+  /* ---------- Phone ---------- */
+
+  // Calling codes. min/max = digits in the national number, after the country code and any leading trunk "0".
+  const COUNTRIES = [
+    { iso: "AU", name: "Australia", dial: "61", min: 9, max: 9, trunk: true },
+    { iso: "BR", name: "Brazil", dial: "55", min: 10, max: 11, trunk: true },
+    { iso: "CA", name: "Canada", dial: "1", min: 10, max: 10 },
+    { iso: "CN", name: "China", dial: "86", min: 9, max: 11, trunk: true },
+    { iso: "FR", name: "France", dial: "33", min: 9, max: 9, trunk: true },
+    { iso: "DE", name: "Germany", dial: "49", min: 6, max: 11, trunk: true },
+    { iso: "HK", name: "Hong Kong", dial: "852", min: 8, max: 8 },
+    { iso: "IN", name: "India", dial: "91", min: 10, max: 10, trunk: true },
+    { iso: "IE", name: "Ireland", dial: "353", min: 7, max: 9, trunk: true },
+    { iso: "IT", name: "Italy", dial: "39", min: 6, max: 11 },
+    { iso: "JP", name: "Japan", dial: "81", min: 9, max: 10, trunk: true },
+    { iso: "KE", name: "Kenya", dial: "254", min: 9, max: 9, trunk: true },
+    { iso: "MY", name: "Malaysia", dial: "60", min: 8, max: 10, trunk: true },
+    { iso: "MX", name: "Mexico", dial: "52", min: 10, max: 10 },
+    { iso: "NL", name: "Netherlands", dial: "31", min: 9, max: 9, trunk: true },
+    { iso: "NZ", name: "New Zealand", dial: "64", min: 8, max: 10, trunk: true },
+    { iso: "NG", name: "Nigeria", dial: "234", min: 8, max: 10, trunk: true },
+    { iso: "PH", name: "Philippines", dial: "63", min: 8, max: 10, trunk: true },
+    { iso: "SA", name: "Saudi Arabia", dial: "966", min: 8, max: 9, trunk: true },
+    { iso: "SG", name: "Singapore", dial: "65", min: 8, max: 8 },
+    { iso: "ZA", name: "South Africa", dial: "27", min: 9, max: 9, trunk: true },
+    { iso: "KR", name: "South Korea", dial: "82", min: 8, max: 10, trunk: true },
+    { iso: "ES", name: "Spain", dial: "34", min: 9, max: 9 },
+    { iso: "AE", name: "United Arab Emirates", dial: "971", min: 8, max: 9, trunk: true },
+    { iso: "GB", name: "United Kingdom", dial: "44", min: 9, max: 10, trunk: true },
+    { iso: "US", name: "United States", dial: "1", min: 10, max: 10 },
+    { iso: "ZZ", name: "Other (type + and country code)", dial: "", min: 0, max: 0 }
+  ];
+  const COUNTRY_BY_ISO = {};
+  COUNTRIES.forEach(function (c) { COUNTRY_BY_ISO[c.iso] = c; });
+
+  const TIMEZONE_COUNTRY = {
+    "Asia/Manila": "PH", "Asia/Kolkata": "IN", "Asia/Calcutta": "IN", "Asia/Singapore": "SG",
+    "Asia/Kuala_Lumpur": "MY", "Asia/Dubai": "AE", "Asia/Riyadh": "SA", "Asia/Tokyo": "JP",
+    "Asia/Seoul": "KR", "Asia/Shanghai": "CN", "Asia/Hong_Kong": "HK", "Europe/London": "GB",
+    "Europe/Dublin": "IE", "Europe/Berlin": "DE", "Europe/Paris": "FR", "Europe/Madrid": "ES",
+    "Europe/Rome": "IT", "Europe/Amsterdam": "NL", "Africa/Johannesburg": "ZA", "Africa/Lagos": "NG",
+    "Africa/Nairobi": "KE", "Pacific/Auckland": "NZ", "America/Toronto": "CA", "America/Vancouver": "CA",
+    "America/Edmonton": "CA", "America/Winnipeg": "CA", "America/Halifax": "CA", "America/St_Johns": "CA",
+    "America/Regina": "CA", "America/Mexico_City": "MX", "America/Cancun": "MX", "America/Monterrey": "MX",
+    "America/Tijuana": "MX", "America/Sao_Paulo": "BR", "America/New_York": "US", "America/Chicago": "US",
+    "America/Denver": "US", "America/Los_Angeles": "US", "America/Phoenix": "US", "America/Anchorage": "US",
+    "America/Detroit": "US", "America/Boise": "US", "Pacific/Honolulu": "US"
+  };
+
+  /** Best guess at the visitor's country: time zone first, then browser language region, else US. */
+  function detectCountry(env) {
+    const e = env || {};
+    const tz = e.timeZone || "";
+    if (TIMEZONE_COUNTRY[tz]) return TIMEZONE_COUNTRY[tz];
+    if (/^Australia\//.test(tz)) return "AU";
+    if (/^America\/(Indiana|Kentucky|North_Dakota)\//.test(tz)) return "US";
+    const langs = e.languages || [];
+    for (let i = 0; i < langs.length; i++) {
+      const m = /^[a-z]{2,3}(?:[-_][A-Za-z]{4})?[-_]([A-Za-z]{2})(?:$|[-_])/.exec(langs[i] || "");
+      if (m && COUNTRY_BY_ISO[m[1].toUpperCase()] && m[1].toUpperCase() !== "ZZ") return m[1].toUpperCase();
+    }
+    return "US";
+  }
+
+  /** For a number typed with "+", find the country whose calling code it starts with (keeps the chosen one if it fits). */
+  function countryFromDialPrefix(digits, preferredIso) {
+    const preferred = COUNTRY_BY_ISO[preferredIso];
+    if (preferred && preferred.dial && digits.indexOf(preferred.dial) === 0) return preferred;
+    let best = null;
+    COUNTRIES.forEach(function (c) {
+      if (!c.dial || digits.indexOf(c.dial) !== 0) return;
+      if (!best || c.dial.length > best.dial.length) best = c;
+    });
+    if (best && best.dial === "1") return COUNTRY_BY_ISO.US; // +1 defaults to the US unless Canada was chosen
+    return best;
+  }
+
+  /**
+   * Validate a phone number for the chosen country (ISO code).
+   * A number typed with its own "+code" overrides the dropdown.
+   * Returns { ok, error, country, e164, display }.
+   */
+  function parsePhone(raw, iso) {
+    const v = String(raw == null ? "" : raw).trim();
+    let country = COUNTRY_BY_ISO[iso] || COUNTRY_BY_ISO.US;
+    if (!v) return { ok: false, error: "Enter your phone number.", country: country };
+    if (!/^\+?[0-9\s().-]+$/.test(v)) {
+      return { ok: false, error: "Enter a valid phone number using digits, spaces, dashes or brackets.", country: country };
+    }
+    let digits = v.replace(/\D/g, "");
+
+    if (v.charAt(0) === "+") {
+      const match = countryFromDialPrefix(digits, country.iso);
+      if (!match) {
+        // Calling code not in our list: accept any E.164-length number.
+        if (digits.length < 8 || digits.length > 15) {
+          return { ok: false, error: "Enter a valid phone number with its country code.", country: COUNTRY_BY_ISO.ZZ };
+        }
+        return { ok: true, error: "", country: COUNTRY_BY_ISO.ZZ, e164: "+" + digits, display: "+" + digits };
+      }
+      country = match;
+      digits = digits.slice(country.dial.length);
+    } else if (country.iso === "ZZ") {
+      return { ok: false, error: "Enter a valid phone number starting with + and your country code.", country: country };
+    } else if (country.dial === "1" && digits.length === 11 && digits.charAt(0) === "1") {
+      digits = digits.slice(1); // 1 (415) 555-0132
+    }
+
+    if (country.trunk && digits.charAt(0) === "0") digits = digits.slice(1); // 0917… -> 917…
+
+    if (digits.length < country.min || digits.length > country.max) {
+      const range = country.min === country.max ? String(country.min) : country.min + "–" + country.max;
+      return {
+        ok: false,
+        error: "Enter a valid phone number: " + country.name + " numbers have " + range +
+          " digits after +" + country.dial + ".",
+        country: country
+      };
+    }
+    if (country.dial === "1" && !/^[2-9]\d{2}[2-9]\d{6}$/.test(digits)) {
+      return { ok: false, error: "Enter a valid phone number: US and Canadian numbers look like (415) 555-0132.", country: country };
+    }
+    return {
+      ok: true,
+      error: "",
+      country: country,
+      e164: "+" + country.dial + digits,
+      display: "+" + country.dial + " " + digits
+    };
+  }
+
+  /* ---------- Field validation ---------- */
+
+  /** Returns an error message for a customer detail field, or "" when valid. ctx.country = phone country ISO code. */
+  function validateField(field, raw, ctx) {
     const v = String(raw == null ? "" : raw).trim();
     switch (field) {
       case "name":
@@ -118,16 +273,10 @@
         return "";
       case "email":
         if (!v) return "Enter your email address.";
-        if (v.length > 254 || !EMAIL_RE.test(v)) return "Enter a valid email address, like name@example.com.";
+        if (!isValidEmail(v)) return "Enter a valid email address, like name@example.com.";
         return "";
-      case "phone": {
-        if (!v) return "Enter your phone number.";
-        const digits = v.replace(/\D/g, "").length;
-        if (!/^\+?[0-9\s().-]+$/.test(v) || digits < 7 || digits > 15) {
-          return "Enter a valid phone number, like (555) 123-4567.";
-        }
-        return "";
-      }
+      case "phone":
+        return parsePhone(v, ctx && ctx.country).error;
       case "address":
         if (!v) return "Enter the address of the property.";
         if (v.length < 5) return "Enter the full address of the property.";
@@ -269,6 +418,10 @@
     parseQuantity: parseQuantity,
     calculate: calculate,
     validateField: validateField,
+    isValidEmail: isValidEmail,
+    COUNTRIES: COUNTRIES,
+    detectCountry: detectCountry,
+    parsePhone: parsePhone,
     escapeHtml: escapeHtml,
     buildEmail: buildEmail,
     buildEmailParams: buildEmailParams,

@@ -170,7 +170,10 @@ test.describe("Validation", () => {
     expect(await q.sentEmails()).toHaveLength(0);
   });
 
-  for (const email of ["maria.example.com", "maria@example", "maria @example.com", "@example.com"]) {
+  for (const email of [
+    "maria.example.com", "maria@example", "maria @example.com", "@example.com", "maria@@example.com",
+    "maria..x@example.com", ".maria@example.com", "maria@-example.com", "maria@example..com", "maria@example.c"
+  ]) {
     test(`rejects email "${email}"`, async ({ page }) => {
       const q = new QuotePage(page);
       await q.setSizes({ fence: "100" });
@@ -181,11 +184,29 @@ test.describe("Validation", () => {
     });
   }
 
-  for (const phone of ["12345", "call me", "1234567890123456"]) {
-    test(`rejects phone "${phone}"`, async ({ page }) => {
+  for (const email of ["first.last@sub.example.co.uk", "o'brien@example.ie", "UPPER.CASE@EXAMPLE.COM"]) {
+    test(`accepts email "${email}"`, async ({ page }) => {
       const q = new QuotePage(page);
       await q.setSizes({ fence: "100" });
-      await q.fillDetails({ phone });
+      await q.fillDetails({ email });
+      await q.submit.click();
+      await expect(q.success).toBeVisible();
+    });
+  }
+
+  for (const { country, phone } of [
+    { country: "US", phone: "12345" },
+    { country: "US", phone: "call me" },
+    { country: "US", phone: "1234567890123456" },
+    { country: "US", phone: "(055) 555-0132" },
+    { country: "PH", phone: "917 123 4" },
+    { country: "GB", phone: "07700 9001" },
+    { country: "ZZ", phone: "4155550132" }
+  ]) {
+    test(`rejects phone "${phone}" for ${country}`, async ({ page }) => {
+      const q = new QuotePage(page);
+      await q.setSizes({ fence: "100" });
+      await q.fillDetails({ country, phone });
       await q.submit.click();
       await expect(q.fieldError("phone")).toContainText("Enter a valid phone number");
       expect(await q.sentEmails()).toHaveLength(0);
@@ -196,8 +217,40 @@ test.describe("Validation", () => {
     const q = new QuotePage(page);
     await q.setSizes({ fence: "100" });
     await q.fillDetails({ phone: "+63 917 123 4567", email: "maria+quotes@example.com" });
+    await expect(q.country).toHaveValue("PH"); // typed +63 switched the dropdown
     await q.submit.click();
     await expect(q.success).toBeVisible();
+    const [{ params }] = await q.sentEmails();
+    expect(params.customer_phone).toBe("+63 9171234567");
+    expect(params.customer_email).toBe("maria+quotes@example.com");
+  });
+
+  test("accepts a local number with its trunk 0 for the chosen country", async ({ page }) => {
+    const q = new QuotePage(page);
+    await q.setSizes({ fence: "100" });
+    await q.fillDetails({ country: "GB", phone: "07700 900123" });
+    await q.submit.click();
+    await expect(q.success).toBeVisible();
+    const [{ params }] = await q.sentEmails();
+    expect(params.customer_phone).toBe("+44 7700900123");
+  });
+
+  test("re-checks the phone number when the country is changed", async ({ page }) => {
+    const q = new QuotePage(page);
+    await q.country.selectOption("US");
+    await q.phone.fill("0917 123 4567");
+    await q.phone.blur();
+    await expect(q.fieldError("phone")).toContainText("United States numbers have 10 digits");
+    await q.country.selectOption("PH");
+    await expect(q.fieldError("phone")).toBeHidden();
+    await expect(q.phone).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("lists country codes with the +code in each option", async ({ page }) => {
+    const q = new QuotePage(page);
+    await expect(q.country.locator("option[value=PH]")).toHaveText("+63 Philippines");
+    await expect(q.country.locator("option[value=US]")).toHaveText("+1 United States");
+    await expect(q.country.locator("option[value=ZZ]")).toHaveCount(1);
   });
 
   test("clears the 'fix the highlighted fields' banner once everything is fixed", async ({ page }) => {
@@ -235,7 +288,7 @@ test.describe("Submitting (email stubbed)", () => {
       reply_to: VALID_CUSTOMER.email,
       customer_name: VALID_CUSTOMER.name,
       customer_email: VALID_CUSTOMER.email,
-      customer_phone: VALID_CUSTOMER.phone,
+      customer_phone: "+1 4155550132",
       service_address: VALID_CUSTOMER.address,
       notes: "Back gate code 1234",
       quote_subtotal: "$532.00",
@@ -366,5 +419,36 @@ test.describe("Layout", () => {
       // Desktop: price panel beside the form.
       expect(priceBox.x).toBeGreaterThan(sizesBox.x + sizesBox.width - 1);
     }
+  });
+});
+
+test.describe("Phone country auto-detection", () => {
+  for (const { timezoneId, locale, expected } of [
+    { timezoneId: "Asia/Manila", locale: "en-US", expected: "PH" },
+    { timezoneId: "Europe/London", locale: "en-GB", expected: "GB" },
+    { timezoneId: "America/New_York", locale: "en-US", expected: "US" },
+    { timezoneId: "Australia/Sydney", locale: "en-AU", expected: "AU" },
+    { timezoneId: "UTC", locale: "en-CA", expected: "CA" }
+  ]) {
+    test.describe(`${timezoneId} / ${locale}`, () => {
+      test.use({ timezoneId, locale });
+      test(`preselects ${expected}`, async ({ page }) => {
+        const q = new QuotePage(page);
+        await expect(q.country).toHaveValue(expected);
+      });
+    });
+  }
+
+  test.describe("after Start a new quote", () => {
+    test.use({ timezoneId: "Asia/Manila" });
+    test("goes back to the detected country", async ({ page }) => {
+      const q = new QuotePage(page);
+      await q.setSizes({ fence: "100" });
+      await q.fillDetails({ country: "GB", phone: "07700 900123" });
+      await q.submit.click();
+      await expect(q.success).toBeVisible();
+      await q.newQuote.click();
+      await expect(q.country).toHaveValue("PH");
+    });
   });
 });

@@ -1,7 +1,8 @@
 // Page object for the quote page.
 const VALID_CUSTOMER = {
   name: "Test Customer",
-  phone: "(555) 123-4567",
+  country: "US",
+  phone: "(415) 555-0132",
   email: "test.customer@example.com",
   address: "12 Harbor Rd, Springfield",
   notes: ""
@@ -16,6 +17,7 @@ class QuotePage {
     this.servicesError = page.locator("#err-services");
     this.name = page.locator("#name");
     this.phone = page.locator("#phone");
+    this.country = page.locator("#phone-country");
     this.email = page.locator("#email");
     this.address = page.locator("#address");
     this.notes = page.locator("#notes");
@@ -58,6 +60,7 @@ class QuotePage {
   async fillDetails(overrides = {}) {
     const d = { ...VALID_CUSTOMER, ...overrides };
     await this.name.fill(d.name);
+    await this.country.selectOption(d.country);
     await this.phone.fill(d.phone);
     await this.email.fill(d.email);
     await this.address.fill(d.address);

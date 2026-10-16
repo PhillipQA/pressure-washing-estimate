@@ -90,20 +90,87 @@ test("customer detail validation", () => {
   assert.equal(L.validateField("name", "Maria Santos"), "");
   assert.equal(L.validateField("name", "Seán O'Brien-López"), "");
   assert.ok(L.validateField("email", ""));
-  assert.ok(L.validateField("email", "maria.example.com"));
-  assert.ok(L.validateField("email", "maria@example"));
-  assert.ok(L.validateField("email", "maria @example.com"));
-  assert.equal(L.validateField("email", "maria+quotes@example.com"), "");
-  assert.ok(L.validateField("phone", ""));
-  assert.ok(L.validateField("phone", "12345"));
-  assert.ok(L.validateField("phone", "call me"));
-  assert.equal(L.validateField("phone", "(555) 123-4567"), "");
-  assert.equal(L.validateField("phone", "+63 917 123 4567"), "");
+  assert.equal(L.validateField("email", " maria@example.com "), "");
+  assert.ok(L.validateField("phone", "", { country: "US" }));
+  assert.equal(L.validateField("phone", "(415) 555-0132", { country: "US" }), "");
   assert.ok(L.validateField("address", ""));
   assert.ok(L.validateField("address", "12"));
   assert.equal(L.validateField("address", "12 Harbor Rd, Springfield"), "");
   assert.equal(L.validateField("notes", ""), "");
   assert.ok(L.validateField("notes", "x".repeat(1001)));
+});
+
+test("email: accepts real-world valid addresses", () => {
+  for (const ok of [
+    "maria@example.com",
+    "first.last@sub.example.co.uk",
+    "maria+quotes@example.com",
+    "o'brien@example.ie",
+    "UPPER.CASE@EXAMPLE.COM",
+    "a_b-c@my-domain.io",
+    "x@xn--80ak6aa92e.xn--p1ai"
+  ]) {
+    assert.equal(L.isValidEmail(ok), true, ok);
+  }
+});
+
+test("email: rejects malformed addresses", () => {
+  for (const bad of [
+    "", "maria.example.com", "maria@example", "maria @example.com", "@example.com", "maria@",
+    "maria@@example.com", "ma@ria@example.com", "maria..x@example.com", ".maria@example.com", "maria.@example.com",
+    "maria@-example.com", "maria@example-.com", "maria@example..com", "maria@.example.com", "maria@example.com.",
+    "maria@example.c", "maria@example.c0m", "maria@exa_mple.com", "<maria>@example.com",
+    "x".repeat(65) + "@example.com", "a@" + "b".repeat(64) + ".com"
+  ]) {
+    assert.equal(L.isValidEmail(bad), false, JSON.stringify(bad));
+  }
+});
+
+test("phone: validates against the chosen country", () => {
+  const ok = (raw, iso, display) => {
+    const p = L.parsePhone(raw, iso);
+    assert.equal(p.ok, true, raw + " / " + iso + ": " + p.error);
+    if (display) assert.equal(p.display, display);
+  };
+  const bad = (raw, iso) => assert.equal(L.parsePhone(raw, iso).ok, false, raw + " / " + iso);
+
+  ok("(415) 555-0132", "US", "+1 4155550132");
+  ok("1 415 555 0132", "US", "+1 4155550132"); // leading 1 allowed
+  ok("0917 123 4567", "PH", "+63 9171234567"); // trunk 0 dropped
+  ok("917-123-4567", "PH", "+63 9171234567");
+  ok("07700 900123", "GB", "+44 7700900123");
+  ok("0412 345 678", "AU", "+61 412345678");
+  ok("06 1234 5678", "IT", "+39 0612345678"); // Italy keeps its leading 0
+
+  bad("12345", "US"); // too short
+  bad("415 555 01321", "US"); // too long
+  bad("(055) 555-0132", "US"); // US area codes can't start with 0 or 1
+  bad("(415) 155-0132", "US"); // exchange can't start with 1
+  bad("call me", "US");
+  bad("917 123 4", "PH"); // 7 digits: too short for the Philippines
+  bad("0917 123 45678", "PH"); // 11 digits after the 0: too long
+  bad("4155550132", "ZZ"); // "Other" needs the + and country code
+});
+
+test("phone: a typed +code overrides the dropdown", () => {
+  assert.equal(L.parsePhone("+44 7700 900123", "US").country.iso, "GB");
+  assert.equal(L.parsePhone("+63 917 123 4567", "US").display, "+63 9171234567");
+  assert.equal(L.parsePhone("+1 415 555 0132", "PH").country.iso, "US");
+  assert.equal(L.parsePhone("+1 416 555 0132", "CA").country.iso, "CA"); // keeps Canada when chosen
+  assert.equal(L.parsePhone("+353 85 123 4567", "US").country.iso, "IE"); // longest code wins
+  assert.equal(L.parsePhone("+998 90 123 45 67", "US").ok, true); // code not in the list: generic E.164 check
+  assert.equal(L.parsePhone("+12", "US").ok, false);
+});
+
+test("phone country is detected from time zone, then language, else US", () => {
+  assert.equal(L.detectCountry({ timeZone: "Asia/Manila", languages: ["en-US"] }), "PH");
+  assert.equal(L.detectCountry({ timeZone: "Europe/London" }), "GB");
+  assert.equal(L.detectCountry({ timeZone: "Australia/Sydney" }), "AU");
+  assert.equal(L.detectCountry({ timeZone: "America/Indiana/Indianapolis" }), "US");
+  assert.equal(L.detectCountry({ timeZone: "Etc/UTC", languages: ["en-CA", "en"] }), "CA");
+  assert.equal(L.detectCountry({ timeZone: "Etc/UTC", languages: ["zh-Hant-HK"] }), "HK");
+  assert.equal(L.detectCountry({ timeZone: "Etc/UTC", languages: ["en"] }), "US");
+  assert.equal(L.detectCountry({}), "US");
 });
 
 test("mailto fallback carries the same quote to the same address", () => {

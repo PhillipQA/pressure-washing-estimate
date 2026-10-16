@@ -194,3 +194,14 @@ input[aria-invalid="true"]:focus, textarea[aria-invalid="true"]:focus { box-shad
 
 .site-footer { padding: 24px 0 32px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }
 .req { color: var(--error); font-weight: 700; }
+.phone-row { display: flex; gap: 8px; }
+.phone-row select {
+  flex: 0 0 auto; width: 15rem; max-width: 46%; min-height: 48px;
+  font: inherit; color: inherit; padding: 11px 34px 11px 12px;
+  border: 1px solid var(--field); border-radius: 10px; background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2355657a' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 8px;
+  -webkit-appearance: none; appearance: none; text-overflow: ellipsis;
+}
+.phone-row select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(10, 102, 194, .25); }
+.phone-row input { flex: 1 1 auto; min-width: 0; }
