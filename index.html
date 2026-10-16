@@ -7,11 +7,11 @@
   <meta name="description" content="Get an instant price for pressure washing your house, driveway, deck or fence.">
   <meta name="theme-color" content="#0a66c2">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3c4.5 6 9 11.2 9 16a9 9 0 0 1-18 0c0-4.8 4.5-10 9-16z' fill='%230a66c2'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
   <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script defer src="config.js"></script>
-  <script defer src="quote-logic.js"></script>
-  <script defer src="app.js"></script>
+  <script defer src="config.js?v=2"></script>
+  <script defer src="quote-logic.js?v=2"></script>
+  <script defer src="app.js?v=2"></script>
 </head>
 <body>
   <a class="skip-link" href="#qty-house">Skip to the quote form</a>
@@ -132,8 +132,8 @@
               </div>
             </div>
             <div class="hp" aria-hidden="true">
-              <label for="website">Leave this field empty</label>
-              <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+              <label for="hp-field">Do not fill this in</label>
+              <input id="hp-field" name="hp_field" type="text" tabindex="-1" autocomplete="off">
             </div>
           </fieldset>
         </section>
@@ -143,6 +143,7 @@
           <button type="submit" id="submit-btn" class="btn btn-primary">Send my quote</button>
           <p class="fineprint">Sends your details and this price to our team.</p>
           <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+          <p id="fallback" class="fallback" hidden>Still not working? <a id="fallback-link" href="#">Send this quote from your own email app</a>.</p>
         </section>
       </form>
     </div>

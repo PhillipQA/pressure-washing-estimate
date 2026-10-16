@@ -106,6 +106,28 @@ test("customer detail validation", () => {
   assert.ok(L.validateField("notes", "x".repeat(1001)));
 });
 
+test("mailto fallback carries the same quote to the same address", () => {
+  const quote = {
+    id: "PW-20261017-ZZ99",
+    createdAt: "Oct 17, 2026, 1:30 AM",
+    details: { name: "Ana & Co", email: "ana@example.com", phone: "5551234567", address: "1 Main St", notes: "" },
+    calc: L.calculate({ house: 2000, driveway: 600, deck: 200, fence: 100 })
+  };
+  const href = L.buildMailto(quote, "careers@finchharbor.com");
+  assert.ok(href.startsWith("mailto:careers@finchharbor.com?subject="));
+  const body = decodeURIComponent(href.split("&body=")[1]);
+  assert.match(body, /Name: Ana & Co/);
+  assert.match(body, /TOTAL: \$532\.00/);
+  assert.equal(href.split("&body=").length, 2, "an & in the customer's text must stay encoded");
+});
+
+test("largest allowed job still prices correctly", () => {
+  const max = L.MAX_QUANTITY;
+  const job = calc({ house: max, driveway: max, deck: max, fence: max }); // 15,000 + 12,000 + 30,000 + 100,000
+  assert.equal(job.totalCents, 15700000);
+  assert.equal(L.formatMoney(job.totalCents), "$157,000.00");
+});
+
 test("email has the customer details and the quote, with customer text escaped", () => {
   const quote = {
     id: "PW-20261017-AB12",

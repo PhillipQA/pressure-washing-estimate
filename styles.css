@@ -187,6 +187,9 @@ input[aria-invalid="true"]:focus, textarea[aria-invalid="true"]:focus { box-shad
 .success h2:focus { outline: none; }
 .success-sub { margin: 0 0 18px; color: var(--muted); }
 #success-id { white-space: nowrap; }
+.success h2, .line-name { overflow-wrap: anywhere; }
+.fallback { margin: 10px 0 0; font-size: .95rem; }
+.fallback a { color: var(--brand); font-weight: 600; }
 .success .btn { margin-top: 22px; }
 
 .site-footer { padding: 24px 0 32px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); }

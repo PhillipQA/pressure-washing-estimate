@@ -252,6 +252,14 @@
     };
   }
 
+  /** mailto: link with the same quote, used as a fallback if the email service fails. */
+  function buildMailto(quote, recipient) {
+    const email = buildEmail(quote);
+    return "mailto:" + recipient +
+      "?subject=" + encodeURIComponent(email.subject) +
+      "&body=" + encodeURIComponent(email.text);
+  }
+
   return {
     SERVICES: SERVICES,
     MINIMUM_CENTS: MINIMUM_CENTS,
@@ -263,6 +271,7 @@
     validateField: validateField,
     escapeHtml: escapeHtml,
     buildEmail: buildEmail,
-    buildEmailParams: buildEmailParams
+    buildEmailParams: buildEmailParams,
+    buildMailto: buildMailto
   };
 });

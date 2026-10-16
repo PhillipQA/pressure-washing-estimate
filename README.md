@@ -54,9 +54,13 @@ The brief said questions would not be answered, so these decisions are recorded 
 - **Email:** sent from the browser with [EmailJS](https://www.emailjs.com/).
   - The EmailJS template's recipient is fixed to careers@finchharbor.com.
   - The public key and IDs are in `config.js`. EmailJS public keys are designed to be public.
-- **Honest confirmation.** The success screen only appears after EmailJS confirms the email was sent. If sending fails or takes more than 20 seconds, the customer sees an error and can retry without retyping anything.
+- **Honest confirmation.** The success screen only appears after EmailJS confirms the email was sent. If sending fails or takes more than 20 seconds:
+  - The customer sees an error saying whether it was their connection or the email service.
+  - They can retry without retyping anything.
+  - They get a link that opens the same quote in their own email app, already addressed to careers@finchharbor.com, so the lead is never lost.
 - **Defensive by default:**
-  - Inline validation; focus moves to the first problem.
+  - Inline validation; focus moves to the first problem. The "fix the highlighted fields" banner clears once everything is fixed.
+  - Pressing Enter (or "Go" on a phone keyboard) in a size box moves to the next box instead of submitting a half-filled form.
   - The submit button locks while sending, so a double click sends one email.
   - A hidden honeypot field catches bots.
   - All customer text is HTML-escaped in the email.
@@ -78,6 +82,16 @@ Also sent, if you prefer to lay out the template yourself:
 - Quote: `quote_id`, `quote_date`, `quote_subtotal`, `quote_total`, `minimum_applied`
 - Plain-text body: `message`
 
+## Known limitations
+
+These come from a red-team review before submission.
+
+- **Anyone can send to the inbox.** A page that sends email from the browser has to expose its EmailJS public key. That means someone could script submissions to careers@finchharbor.com and use up the free plan (200 emails a month).
+  - The fixed recipient means the key can't be used to email anyone else.
+  - Mitigations for production: EmailJS's origin allowlist and CAPTCHA, or moving sending behind a small server function.
+- **Possible duplicate after a timeout.** If EmailJS answers after the 20-second timeout, a customer who retries could send a duplicate email.
+- **Unpinned email library.** The EmailJS script loads from jsDelivr at major version 4 without a pinned version or integrity hash.
+
 ## Run locally
 
 ```bash
@@ -91,10 +105,11 @@ python3 -m http.server 8000
 node --test
 ```
 
-10 unit tests cover:
+12 unit tests cover:
 - Every rate.
 - The $150 boundary: $149.85 → $150.00, $150.00 stays $150.00, $150.15 stays $150.15.
-- Combined jobs and decimal rounding.
+- Combined jobs, the largest allowed job ($157,000.00) and decimal rounding.
+- The mailto fallback.
 - Size parsing: rejects `abc`, `-5`, `1e3`, `1,5`, `12.345` and `100001`.
 - Detail validation.
 - HTML escaping in the email.
@@ -108,6 +123,13 @@ A headless-browser smoke test was also run at 390px and 1280px wide, with the em
 - A double-click sends exactly one email, with the right IDs, recipient, total and reply-to.
 - `<script>` in the notes is escaped.
 - The success screen appears, and "Start a new quote" resets the page.
+
+A second, attack-focused browser run checked:
+- Enter in a size box does not submit.
+- A triple click plus Enter while sending sends one email.
+- A filled honeypot sends nothing.
+- The largest sizes and a 100-character name cause no horizontal scroll at 360px.
+- An email service error and a network failure each show the right message and the mailto fallback, keep the data, and allow a retry.
 
 ### Manual test checklist
 

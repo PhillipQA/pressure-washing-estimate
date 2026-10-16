@@ -20,6 +20,9 @@
   const totalEl = $("total");
   const totalNote = $("total-note");
   const actionsTotal = $("actions-total");
+  const fallback = $("fallback");
+  const fallbackLink = $("fallback-link");
+  const honeypot = $("hp-field");
   const minimumText = L.formatMoney(L.MINIMUM_CENTS).replace(/\.00$/, "");
   let sending = false;
 
@@ -48,6 +51,13 @@
   function sendErrorMessage(err) {
     if (err && err.message === "not-configured") {
       return "Email sending isn't set up yet (EmailJS keys missing in config.js).";
+    }
+    if (err && err.message === "timeout") {
+      return "Sending is taking too long. Please try again in a moment. Your details are still here.";
+    }
+    if (err && typeof err.status === "number" && err.status > 0) {
+      // EmailJS answered with an error (quota, template or service problem): not the customer's connection.
+      return "Sorry, our quote service couldn't send this right now. Please try again in a few minutes. Your details are still here.";
     }
     return "Sorry, we couldn't send your quote. Please check your connection and try again. Your details are still here.";
   }
@@ -158,6 +168,20 @@
       if (parsed.ok && parsed.value > 0) servicesError.textContent = "";
       render();
     });
+    // Enter (or "Go" on a phone keyboard) in a size box moves on instead of submitting a half-filled form.
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const order = L.SERVICES.map((s) => "qty-" + s.id).concat(["name"]);
+      const next = $(order[order.indexOf(input.id) + 1]);
+      if (next) next.focus();
+    });
+  });
+
+  // Clear the "fix the highlighted fields" banner once everything is fixed, so it never goes stale.
+  form.addEventListener("input", () => {
+    if (!statusEl.classList.contains("is-error")) return;
+    if (!form.querySelector('[aria-invalid="true"]') && !servicesError.textContent) setStatus("", "");
   });
 
   DETAIL_FIELDS.forEach((name) => {
@@ -177,6 +201,7 @@
     if (sending) return; // no double emails from double clicks
 
     setStatus("", "");
+    fallback.hidden = true;
     const result = render();
     let firstInvalid = null;
 
@@ -208,7 +233,7 @@
     const quote = { id: makeQuoteId(now), createdAt: formatDate(now), details: details, calc: result.calc };
 
     // Honeypot filled in: almost certainly a bot. Show success, send nothing.
-    if ($("website").value) {
+    if (honeypot && honeypot.value) {
       showSuccess(quote);
       return;
     }
@@ -220,6 +245,9 @@
     } catch (err) {
       console.error("Quote email failed:", err);
       setStatus(sendErrorMessage(err), "error");
+      // Never lose the lead: offer the same quote through the customer's own email app.
+      fallbackLink.href = L.buildMailto(quote, RECIPIENT);
+      fallback.hidden = false;
     } finally {
       setSending(false);
     }
@@ -241,6 +269,7 @@
     form.querySelectorAll("input, textarea").forEach((input) => setFieldError(input, ""));
     servicesError.textContent = "";
     setStatus("", "");
+    fallback.hidden = true;
     render();
     successView.hidden = true;
     quoteView.hidden = false;
