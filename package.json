@@ -1,0 +1,9 @@
+{
+  "name": "pressure-washing-estimate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Instant pressure washing quote page that emails the customer's details and quote to the company.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

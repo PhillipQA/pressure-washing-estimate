@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pressure Washing Quote – Instant Price</title>
+  <meta name="description" content="Get an instant price for pressure washing your house, driveway, deck or fence.">
+  <meta name="theme-color" content="#0a66c2">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3c4.5 6 9 11.2 9 16a9 9 0 0 1-18 0c0-4.8 4.5-10 9-16z' fill='%230a66c2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script defer src="config.js"></script>
+  <script defer src="quote-logic.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#qty-house">Skip to the quote form</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d="M16 3c4.5 6 9 11.2 9 16a9 9 0 0 1-18 0c0-4.8 4.5-10 9-16z" fill="#0a66c2"/>
+          <path d="M11.5 19.5a4.5 4.5 0 0 0 4.5 4.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span>Pressure Washing Quote</span>
+      </div>
+      <span class="header-tag">Instant online pricing</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Your pressure washing price, on the spot</h1>
+      <p>Tell us what needs cleaning and how big it is. Your price updates as you type. Add your details and send it to us in one click.</p>
+    </section>
+
+    <noscript><p class="card noscript">This quote calculator needs JavaScript. Please enable it and reload the page.</p></noscript>
+
+    <div id="quote-view">
+      <form id="quote-form" class="layout" novalidate>
+
+        <section class="card area-services">
+          <fieldset>
+            <legend><span class="step" aria-hidden="true">1</span>What should we clean?</legend>
+            <p class="hint">Enter the size of each area you want cleaned. Leave the others blank.</p>
+            <p class="field-error" id="err-services" role="alert"></p>
+
+            <div class="services">
+              <div class="service">
+                <label for="qty-house"><span class="svc-name">House</span> <span class="rate" data-rate-for="house">$0.15 per sq ft</span></label>
+                <div class="input-unit">
+                  <input id="qty-house" name="house" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 2000" aria-describedby="help-qty-house err-qty-house">
+                  <span class="unit" aria-hidden="true">sq ft</span>
+                </div>
+                <p class="help" id="help-qty-house">Square footage of the house</p>
+                <p class="field-error" id="err-qty-house"></p>
+              </div>
+
+              <div class="service">
+                <label for="qty-driveway"><span class="svc-name">Driveway</span> <span class="rate" data-rate-for="driveway">$0.12 per sq ft</span></label>
+                <div class="input-unit">
+                  <input id="qty-driveway" name="driveway" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 600" aria-describedby="help-qty-driveway err-qty-driveway">
+                  <span class="unit" aria-hidden="true">sq ft</span>
+                </div>
+                <p class="help" id="help-qty-driveway">Length × width, e.g. 20 ft × 30 ft = 600</p>
+                <p class="field-error" id="err-qty-driveway"></p>
+              </div>
+
+              <div class="service">
+                <label for="qty-deck"><span class="svc-name">Deck</span> <span class="rate" data-rate-for="deck">$0.30 per sq ft</span></label>
+                <div class="input-unit">
+                  <input id="qty-deck" name="deck" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 200" aria-describedby="help-qty-deck err-qty-deck">
+                  <span class="unit" aria-hidden="true">sq ft</span>
+                </div>
+                <p class="help" id="help-qty-deck">Length × width of the deck surface</p>
+                <p class="field-error" id="err-qty-deck"></p>
+              </div>
+
+              <div class="service">
+                <label for="qty-fence"><span class="svc-name">Fence</span> <span class="rate" data-rate-for="fence">$1.00 per linear ft</span></label>
+                <div class="input-unit">
+                  <input id="qty-fence" name="fence" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 100" aria-describedby="help-qty-fence err-qty-fence">
+                  <span class="unit" aria-hidden="true">linear ft</span>
+                </div>
+                <p class="help" id="help-qty-fence">Total length of the fence</p>
+                <p class="field-error" id="err-qty-fence"></p>
+              </div>
+            </div>
+          </fieldset>
+        </section>
+
+        <aside class="card summary" aria-labelledby="summary-title">
+          <h2 id="summary-title">Your price</h2>
+          <div id="summary-lines"></div>
+          <div class="total-row" aria-live="polite" aria-atomic="true">
+            <span>Total</span>
+            <strong id="total">$0.00</strong>
+          </div>
+          <p class="total-note" id="total-note">Every job has a $150 minimum.</p>
+        </aside>
+
+        <section class="card area-details">
+          <fieldset>
+            <legend><span class="step" aria-hidden="true">2</span>Your details</legend>
+            <p class="hint">So we can confirm your price and book the job. All fields are required unless marked optional.</p>
+            <div class="grid-2">
+              <div class="field">
+                <label for="name">Full name</label>
+                <input id="name" name="name" type="text" autocomplete="name" maxlength="100" required aria-describedby="err-name">
+                <p class="field-error" id="err-name"></p>
+              </div>
+              <div class="field">
+                <label for="phone">Phone</label>
+                <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="30" required aria-describedby="err-phone">
+                <p class="field-error" id="err-phone"></p>
+              </div>
+              <div class="field span-2">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required aria-describedby="err-email">
+                <p class="field-error" id="err-email"></p>
+              </div>
+              <div class="field span-2">
+                <label for="address">Property address</label>
+                <input id="address" name="address" type="text" autocomplete="street-address" maxlength="200" required aria-describedby="err-address">
+                <p class="field-error" id="err-address"></p>
+              </div>
+              <div class="field span-2">
+                <label for="notes">Notes <span class="optional">(optional)</span></label>
+                <textarea id="notes" name="notes" rows="3" maxlength="1000" placeholder="Anything we should know: stains, access, preferred dates…" aria-describedby="err-notes"></textarea>
+                <p class="field-error" id="err-notes"></p>
+              </div>
+            </div>
+            <div class="hp" aria-hidden="true">
+              <label for="website">Leave this field empty</label>
+              <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+          </fieldset>
+        </section>
+
+        <section class="card actions">
+          <div class="actions-total"><span>Your price</span><strong id="actions-total">—</strong></div>
+          <button type="submit" id="submit-btn" class="btn btn-primary">Send my quote</button>
+          <p class="fineprint">Sends your details and this price to our team.</p>
+          <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+        </section>
+      </form>
+    </div>
+
+    <section id="success-view" class="card success" hidden>
+      <div class="success-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2 id="success-title" tabindex="-1">Thanks, <span id="success-name"></span>. Your quote is in.</h2>
+      <p class="success-sub">We've sent your details and this price to our team. Your quote number is <strong id="success-id"></strong>.</p>
+      <div id="success-lines"></div>
+      <div class="total-row">
+        <span>Total</span>
+        <strong id="success-total"></strong>
+      </div>
+      <button type="button" class="btn btn-secondary" id="new-quote">Start a new quote</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">Prices are calculated from the sizes you enter. Minimum job $150.</div>
+  </footer>
+</body>
+</html>
