@@ -314,7 +314,7 @@
       "Email: " + d.email,
       "Phone: " + d.phone,
       "Property address: " + d.address,
-      "Notes: " + (d.notes || "-"),
+      "Additional comments: " + (d.notes || "-"),
       "",
       "QUOTE"
     ];
@@ -331,48 +331,111 @@
     textLines.push("TOTAL: " + formatMoney(c.totalCents));
     const text = textLines.join("\n");
 
-    const td = 'style="padding:8px 10px;border-bottom:1px solid #e3e8ef;"';
-    const tdR = 'align="right" style="padding:8px 10px;border-bottom:1px solid #e3e8ef;white-space:nowrap;"';
-    const th = 'style="padding:8px 10px;border-bottom:2px solid #0e1b2c;font-size:13px;color:#55657a;"';
-    const detail = function (label, valueHtml) {
-      return '<tr><td style="padding:6px 16px 6px 0;color:#55657a;white-space:nowrap;vertical-align:top;">' + label +
-        '</td><td style="padding:6px 0;">' + valueHtml + "</td></tr>";
+    // Email-safe HTML: tables and inline styles only (Gmail/Outlook strip <style> and most CSS).
+    const BRAND = "#0a66c2";
+    const INK = "#0e1b2c";
+    const MUTED = "#55657a";
+    const LINE = "#e3e8ef";
+    const FONT = "font-family:Arial,Helvetica,sans-serif;";
+    const minimumShort = minimum.replace(/\.00$/, "");
+    const phoneHref = "tel:" + String(d.phone).replace(/[^\d+]/g, "");
+    const mapsHref = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(d.address);
+    const replyHref = "mailto:" + d.email + "?subject=" + encodeURIComponent("Your pressure washing quote " + quote.id);
+    const total = esc(formatMoney(c.totalCents));
+
+    const link = function (href, textHtml) {
+      return '<a href="' + esc(href) + '" style="color:' + BRAND + ';text-decoration:none;">' + textHtml + "</a>";
     };
-    const rows = c.lines.map(function (l) {
-      return "<tr><td " + td + ">" + esc(l.name) + "</td>" +
-        "<td " + tdR + ">" + esc(formatQuantity(l.quantity)) + " " + esc(l.unit) + "</td>" +
-        "<td " + tdR + ">" + esc(formatMoney(l.rateCents)) + " / " + esc(l.unit) + "</td>" +
-        "<td " + tdR + "><strong>" + esc(formatMoney(l.amountCents)) + "</strong></td></tr>";
+    const sectionTitle = function (title) {
+      return '<tr><td style="padding:26px 28px 8px;' + FONT + 'font-size:12px;font-weight:bold;letter-spacing:1px;' +
+        'text-transform:uppercase;color:' + BRAND + ';">' + title + "</td></tr>";
+    };
+    const detailRow = function (label, valueHtml, last) {
+      const border = last ? "" : "border-bottom:1px solid " + LINE + ";";
+      return "<tr>" +
+        '<td width="140" style="padding:11px 12px 11px 0;' + border + FONT + 'font-size:13px;color:' + MUTED + ';vertical-align:top;">' + label + "</td>" +
+        '<td style="padding:11px 0;' + border + FONT + 'font-size:15px;color:' + INK + ';vertical-align:top;word-break:break-word;">' + valueHtml + "</td></tr>";
+    };
+    const lineRows = c.lines.map(function (l) {
+      return "<tr>" +
+        '<td style="padding:12px 0;border-bottom:1px solid ' + LINE + ';' + FONT + 'font-size:15px;color:' + INK + ';">' +
+          "<strong>" + esc(l.name) + "</strong><br>" +
+          '<span style="font-size:13px;color:' + MUTED + ';">' + esc(formatQuantity(l.quantity)) + " " + esc(l.unit) +
+          " &times; " + esc(formatMoney(l.rateCents)) + "</span></td>" +
+        '<td align="right" style="padding:12px 0;border-bottom:1px solid ' + LINE + ';' + FONT + 'font-size:15px;color:' + INK +
+          ';white-space:nowrap;vertical-align:top;">' + esc(formatMoney(l.amountCents)) + "</td></tr>";
     }).join("");
-    const footRow = function (label, value, strong) {
-      const size = strong ? "font-size:17px;font-weight:bold;" : "";
-      return '<tr><td colspan="3" align="right" style="padding:8px 10px;' + size + '">' + label +
-        '</td><td align="right" style="padding:8px 10px;white-space:nowrap;' + size + '">' + value + "</td></tr>";
+    const sumRow = function (label, value, color) {
+      return '<tr><td style="padding:12px 0 0;' + FONT + 'font-size:14px;color:' + color + ';">' + label + "</td>" +
+        '<td align="right" style="padding:12px 0 0;' + FONT + 'font-size:14px;color:' + color + ';white-space:nowrap;">' + value + "</td></tr>";
     };
+    const button = function (href, label, primary) {
+      return '<td style="padding:0 10px 10px 0;"><a href="' + esc(href) + '" style="display:inline-block;padding:12px 22px;' +
+        'border-radius:8px;' + FONT + 'font-size:14px;font-weight:bold;text-decoration:none;' +
+        (primary ? "background:" + BRAND + ";color:#ffffff;" : "background:#eaf2fc;color:" + BRAND + ";") + '">' + label + "</a></td>";
+    };
+    const rates = SERVICES.map(function (s) {
+      return esc(s.name) + " " + esc(formatMoney(s.rateCents)) + "/" + esc(s.unit);
+    }).join(" &middot; ");
 
     const html =
-      '<div style="font-family:Arial,Helvetica,sans-serif;color:#0e1b2c;max-width:640px;line-height:1.45;">' +
-      '<h2 style="margin:0 0 4px;font-size:20px;">New pressure washing quote: ' + esc(formatMoney(c.totalCents)) + "</h2>" +
-      '<p style="margin:0 0 18px;color:#55657a;">Quote ' + esc(quote.id) + " &middot; " + esc(quote.createdAt) + "</p>" +
-      '<h3 style="margin:0 0 6px;font-size:16px;">Customer</h3>' +
-      '<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:18px;">' +
-      detail("Name", esc(d.name)) +
-      detail("Email", '<a href="mailto:' + esc(d.email) + '">' + esc(d.email) + "</a>") +
-      detail("Phone", esc(d.phone)) +
-      detail("Property address", esc(d.address)) +
-      detail("Notes", d.notes ? esc(d.notes).replace(/\r?\n/g, "<br>") : "&mdash;") +
-      "</table>" +
-      '<h3 style="margin:0 0 6px;font-size:16px;">Quote</h3>' +
-      '<table cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">' +
-      "<thead><tr><th align=\"left\" " + th + ">Service</th><th align=\"right\" " + th + ">Size</th>" +
-      "<th align=\"right\" " + th + ">Rate</th><th align=\"right\" " + th + ">Amount</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody><tfoot>" +
-      footRow("Subtotal", esc(formatMoney(c.subtotalCents)), false) +
-      (c.minimumApplied
-        ? footRow("Minimum job adjustment (" + esc(minimum) + " minimum)", "+" + esc(formatMoney(c.adjustmentCents)), false)
-        : "") +
-      footRow("Total", esc(formatMoney(c.totalCents)), true) +
-      "</tfoot></table></div>";
+      '<div style="margin:0;padding:24px 12px;background:#f2f6fa;">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;' +
+        'background:#ffffff;border:1px solid #dbe3ed;border-radius:14px;border-collapse:separate;overflow:hidden;">' +
+
+      // Header: what this is and the price, at a glance
+      '<tr><td style="background:' + BRAND + ';padding:28px;' + FONT + 'color:#ffffff;border-radius:14px 14px 0 0;">' +
+        '<div style="font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#d6e6f8;">New pressure washing quote</div>' +
+        '<div style="font-size:38px;font-weight:bold;line-height:1.15;margin:6px 0 6px;color:#ffffff;">' + total + "</div>" +
+        '<div style="font-size:14px;color:#e3eefb;">' + esc(d.name) + " &middot; Quote " + esc(quote.id) + "</div>" +
+        '<div style="font-size:13px;color:#c9ddf5;margin-top:2px;">' + esc(quote.createdAt) + "</div>" +
+        (c.minimumApplied
+          ? '<div style="display:inline-block;margin-top:14px;padding:5px 12px;border-radius:999px;background:#ffffff;color:' + BRAND +
+            ';font-size:12px;font-weight:bold;">' + esc(minimumShort) + " minimum applied</div>"
+          : "") +
+      "</td></tr>" +
+
+      // Customer details
+      sectionTitle("Customer details") +
+      '<tr><td style="padding:0 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">' +
+        detailRow("Full name", "<strong>" + esc(d.name) + "</strong>") +
+        detailRow("Email", link("mailto:" + d.email, esc(d.email))) +
+        detailRow("Phone", link(phoneHref, esc(d.phone))) +
+        detailRow("Property address", link(mapsHref, esc(d.address)), true) +
+      "</table></td></tr>" +
+
+      // Additional comments
+      sectionTitle("Additional comments") +
+      '<tr><td style="padding:0 28px;"><div style="padding:14px 16px;background:#f4f7fb;border-left:4px solid ' + BRAND +
+        ';border-radius:6px;' + FONT + 'font-size:15px;line-height:1.55;color:' + (d.notes ? INK : MUTED) + ';word-break:break-word;">' +
+        (d.notes ? esc(d.notes).replace(/\r?\n/g, "<br>") : "<em>No additional comments.</em>") +
+      "</div></td></tr>" +
+
+      // Quote breakdown
+      sectionTitle("Quote breakdown") +
+      '<tr><td style="padding:0 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">' +
+        lineRows +
+        sumRow("Subtotal", esc(formatMoney(c.subtotalCents)), MUTED) +
+        (c.minimumApplied
+          ? sumRow("Minimum job adjustment (" + esc(minimum) + " minimum)", "+" + esc(formatMoney(c.adjustmentCents)), "#8a4b00")
+          : "") +
+        '<tr><td colspan="2" style="padding:14px 0 0;"><div style="border-top:2px solid ' + INK + ';font-size:0;line-height:0;">&nbsp;</div></td></tr>' +
+        '<tr><td style="padding:12px 0 0;' + FONT + 'font-size:17px;font-weight:bold;color:' + INK + ';">Total</td>' +
+          '<td align="right" style="padding:12px 0 0;' + FONT + 'font-size:24px;font-weight:bold;color:' + BRAND + ';white-space:nowrap;">' + total + "</td></tr>" +
+      "</table></td></tr>" +
+
+      // Quick actions
+      '<tr><td style="padding:28px 28px 4px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>' +
+        button(replyHref, "Reply to customer", true) +
+        button(phoneHref, "Call customer", false) +
+      "</tr></table></td></tr>" +
+
+      // Footer
+      '<tr><td style="padding:16px 28px 28px;' + FONT + 'font-size:12px;line-height:1.6;color:' + MUTED + ';">' +
+        "Sent from the online quote page. Rates: " + rates + " &middot; Minimum job " + esc(minimumShort) + "." +
+      "</td></tr>" +
+      "</table></div>";
+
 
     return { subject: subject, text: text, html: html };
   }
