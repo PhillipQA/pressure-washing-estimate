@@ -124,6 +124,34 @@ A headless-browser smoke test was also run at 390px and 1280px wide, with the em
 - `<script>` in the notes is escaped.
 - The success screen appears, and "Start a new quote" resets the page.
 
+### End-to-end tests (Playwright)
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e          # against a local copy (starts its own server)
+npm run test:e2e:live     # against the live GitHub Pages site
+npx playwright show-report
+```
+
+**No test sends a real email.**
+- `tests-e2e/fixtures.js` replaces the EmailJS library with a stub that records what would have been sent, so the tests can still check the exact email content.
+- Any request to the real EmailJS API is aborted and fails the test.
+- The stub can also simulate an email service error and a network failure.
+
+There are 43 tests, each run on desktop Chrome and a Pixel 7 phone (86 runs). They live in `tests-e2e/quote.spec.js` and use a page object in `tests-e2e/quote-page.js`:
+
+| Area | What's covered |
+|---|---|
+| Live price | The four rates; each service alone; the $150 minimum at $149.85 / $150.00 / $150.15; minimum on the job total; all four combined ($532.00); changing and clearing sizes; `1,500` and decimals |
+| Bad sizes | `-5`, `abc`, `1e3`, `12.345`, `1,5` and `100001` are each rejected and left out of the price; Enter in a size box doesn't submit |
+| Validation | Empty submit blocked; name, phone, email and address required but notes optional; red asterisks; spaces-only input; bad emails and phones; international phone and plus-addressed email accepted; error banner clears once fixed |
+| Submitting | Exact email content (recipient, reply-to, every customer field, line items, totals, quote ID matches the screen); minimum shown in the email; one email from repeated clicks; HTML escaped; Start a new quote resets; spam trap sends nothing |
+| Failures | Service error and network failure: the right message, details kept, mailto fallback to careers@finchharbor.com, retry allowed |
+| Layout | No horizontal scroll with the largest values and a 100-character name; price panel after the sizes on a phone and beside the form on desktop |
+
+The tests also run on every push through GitHub Actions (`.github/workflows/tests.yml`).
+
 A second, attack-focused browser run checked:
 - Enter in a size box does not submit.
 - A triple click plus Enter while sending sends one email.

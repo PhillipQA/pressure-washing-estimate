@@ -4,6 +4,12 @@
   "private": true,
   "description": "Instant pressure washing quote page that emails the customer's details and quote to the company.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "playwright test",
+    "test:e2e:live": "BASE_URL=https://phillipqa.github.io/pressure-washing-estimate/ playwright test",
+    "test:all": "node --test && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }
